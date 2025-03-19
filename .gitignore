@@ -25,3 +25,17 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# LaTeX preview temp files
+temp/
+
+# LaTeX processing files
+temp/
+*.aux
+*.log
+*.out
+*.pdf
+*.synctex.gz
+
+# Generated preview images
+public/templates/previews/

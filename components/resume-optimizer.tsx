@@ -1,12 +1,13 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { getTemplates, TemplateMetadata } from "@/lib/template-config"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
-import { optimizeResume } from "@/lib/resume-service"
+// Remove optimizeResume import as we'll use the API directly
 import {
   Loader2,
   FileText,
@@ -20,6 +21,7 @@ import {
   AlertCircle,
   Edit,
   Save,
+  Trash2,
 } from "lucide-react"
 import FileUploader from "@/components/file-uploader"
 import ComparisonView from "@/components/comparison-view"
@@ -38,7 +40,22 @@ import ResumeEditor from "@/components/resume-editor"
 // Define a constant for the localStorage key to ensure consistency
 const STORAGE_KEY = "resume-optimizer-api-keys"
 
+// Constant for resume storage key
+const RESUME_STORAGE_KEY = "resume-optimizer-state"
+
+// Type for stored resume data
+interface StoredResumeData {
+  fileName: string
+  fileSize: number
+  resumeText: string
+  jobDescription: string
+  optimizedResume: string
+  editedResume: string
+  lastUpdated: number
+}
+
 export default function ResumeOptimizer() {
+  // State definitions with initialization from localStorage
   const [resumeFile, setResumeFile] = useState<File | null>(null)
   const [resumeText, setResumeText] = useState("")
   const [jobDescription, setJobDescription] = useState("")
@@ -48,7 +65,7 @@ export default function ResumeOptimizer() {
   const [optimizationProgress, setOptimizationProgress] = useState(0)
   const [activeTab, setActiveTab] = useState("upload")
   const [aiProvider, setAiProvider] = useState("mistral")
-  const [latexTemplate, setLatexTemplate] = useState("professional")
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateMetadata>(getTemplates()[0])
   const [isEditing, setIsEditing] = useState(false)
   const [hasApiKey, setHasApiKey] = useState<Record<string, boolean>>({
     mistral: false,
@@ -56,6 +73,87 @@ export default function ResumeOptimizer() {
     claude: false,
     deepseek: false,
   })
+
+  // Load saved resume state on component mount
+  useEffect(() => {
+    try {
+      const savedState = localStorage.getItem(RESUME_STORAGE_KEY)
+      if (savedState) {
+        const parsedState: StoredResumeData = JSON.parse(savedState)
+        
+        // Check if the saved state is from within the last 24 hours
+        const isRecent = (Date.now() - parsedState.lastUpdated) < 24 * 60 * 60 * 1000
+        
+        if (isRecent) {
+          setResumeText(parsedState.resumeText)
+          setJobDescription(parsedState.jobDescription)
+          setOptimizedResume(parsedState.optimizedResume)
+          setEditedResume(parsedState.editedResume)
+          
+          // Create a new File object from the stored metadata
+          // Note: We can't restore the actual File object, but we can create a placeholder
+          const mockFile = new File([parsedState.resumeText], parsedState.fileName, {
+            type: 'text/plain',
+          })
+          setResumeFile(mockFile)
+          
+          // If we have resume data, set the active tab appropriately
+          if (parsedState.optimizedResume) {
+            setActiveTab('results')
+          } else if (parsedState.resumeText) {
+            setActiveTab('job-description')
+          }
+        } else {
+          // Clear expired data
+          localStorage.removeItem(RESUME_STORAGE_KEY)
+        }
+      }
+    } catch (error) {
+      console.error('Error loading saved resume state:', error)
+      // Clear potentially corrupted data
+      localStorage.removeItem(RESUME_STORAGE_KEY)
+    }
+  }, [])
+
+  // Save resume state when relevant data changes
+  useEffect(() => {
+    // Always save state if we have either a file or optimized content
+    if (resumeFile || optimizedResume) {
+      try {
+        const stateToStore: StoredResumeData = {
+          fileName: resumeFile?.name || "resume.txt",
+          fileSize: resumeFile?.size || 0,
+          resumeText,
+          jobDescription,
+          optimizedResume,
+          editedResume,
+          lastUpdated: Date.now()
+        }
+        localStorage.setItem(RESUME_STORAGE_KEY, JSON.stringify(stateToStore))
+      } catch (error) {
+        console.error('Error saving resume state:', error)
+      }
+    }
+  }, [resumeFile, resumeText, jobDescription, optimizedResume, editedResume])
+
+  // Cleanup storage when component unmounts
+  useEffect(() => {
+    return () => {
+      // Clear storage if it's older than 24 hours
+      try {
+        const savedState = localStorage.getItem(RESUME_STORAGE_KEY)
+        if (savedState) {
+          const parsedState: StoredResumeData = JSON.parse(savedState)
+          const isExpired = (Date.now() - parsedState.lastUpdated) >= 24 * 60 * 60 * 1000
+          if (isExpired) {
+            localStorage.removeItem(RESUME_STORAGE_KEY)
+          }
+        }
+      } catch (error) {
+        console.error('Error cleaning up storage:', error)
+      }
+    }
+  }, [])
   const { toast } = useToast()
   const isMobile = useMobile()
 
@@ -112,26 +210,64 @@ export default function ResumeOptimizer() {
   }, [aiProvider])
 
   const handleFileUpload = async (file: File) => {
-    setResumeFile(file)
+    try {
+      // Clear previous resume state
+      setOptimizedResume("")
+      setEditedResume("")
+      setJobDescription("")
+      
+      setResumeFile(file)
 
-    // In a real app, you would extract text from the file here
-    // This is a simplified version for the demo
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      if (e.target?.result) {
-        // For demo purposes, we'll just use the raw text
-        // In a real app, you'd use a proper parser for PDF/DOCX/etc.
-        setResumeText(e.target.result.toString())
+      // Extract text from the file
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          const text = e.target.result.toString()
+          setResumeText(text)
+          
+          // Store the new file state
+          try {
+            const stateToStore: StoredResumeData = {
+              fileName: file.name,
+              fileSize: file.size,
+              resumeText: text,
+              jobDescription: "",
+              optimizedResume: "",
+              editedResume: "",
+              lastUpdated: Date.now()
+            }
+            localStorage.setItem(RESUME_STORAGE_KEY, JSON.stringify(stateToStore))
+          } catch (error) {
+            console.error('Error saving uploaded file state:', error)
+            // Don't block the upload process if storage fails
+          }
+        }
       }
+
+      reader.onerror = () => {
+        toast({
+          title: "Upload failed",
+          description: "Failed to read the file. Please try again.",
+          variant: "destructive",
+        })
+      }
+
+      reader.readAsText(file)
+
+      toast({
+        title: "Resume uploaded",
+        description: `File "${file.name}" has been uploaded successfully.`,
+      })
+
+      setActiveTab("job-description")
+    } catch (error) {
+      console.error('Error in file upload:', error)
+      toast({
+        title: "Upload failed",
+        description: "An error occurred while uploading the file. Please try again.",
+        variant: "destructive",
+      })
     }
-    reader.readAsText(file)
-
-    toast({
-      title: "Resume uploaded",
-      description: `File "${file.name}" has been uploaded successfully.`,
-    })
-
-    setActiveTab("job-description")
   }
 
   // Update the handleOptimize function to better handle the environment variable
@@ -208,11 +344,28 @@ export default function ResumeOptimizer() {
     }, 800)
 
     try {
-      // Pass the API key and optimization prompt to the optimizeResume function
-      const optimized = await optimizeResume(resumeText, jobDescription, aiProvider, apiKey, optimizationPrompt)
+      // Call the new API endpoint
+      const response = await fetch("/api/optimize", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          resumeText,
+          jobDescription,
+          provider: aiProvider,
+          apiKey,
+        }),
+      })
 
-      setOptimizedResume(optimized)
-      setEditedResume(optimized)
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || "Failed to optimize resume")
+      }
+
+      const data = await response.json()
+      setOptimizedResume(data.result)
+      setEditedResume(data.result)
       setOptimizationProgress(100)
       setActiveTab("results")
 
@@ -234,23 +387,42 @@ export default function ResumeOptimizer() {
     }
   }
 
-  const handleDownloadPdf = () => {
-    // In a real app, this would generate a LaTeX document and convert it to PDF
-    toast({
-      title: "PDF generation",
-      description: "Your optimized resume PDF is being generated and will download shortly.",
-    })
+  const handleDownloadPdf = async () => {
+    try {
+      const response = await fetch("/api/latex", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          content: editedResume || optimizedResume,
+          template: selectedTemplate.path
+        }),
+      });
 
-    // Simulate PDF download
-    setTimeout(() => {
-      const element = document.createElement("a")
-      const file = new Blob([editedResume], { type: "text/plain" })
-      element.href = URL.createObjectURL(file)
-      element.download = "optimized-resume.pdf"
-      document.body.appendChild(element)
-      element.click()
-      document.body.removeChild(element)
-    }, 1500)
+      if (!response.ok) {
+        throw new Error("Failed to generate PDF");
+      }
+
+      // Handle binary PDF response
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "optimized-resume.pdf";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+
+    } catch (error) {
+      console.error("PDF generation error:", error);
+      toast({
+        title: "PDF generation failed",
+        description: "Failed to generate PDF. Please try again.",
+        variant: "destructive",
+      });
+    }
   }
 
   const getProviderName = (provider: string): string => {
@@ -266,6 +438,20 @@ export default function ResumeOptimizer() {
         return "Mistral AI"
     }
   }
+
+  const handleDeleteResume = () => {
+    localStorage.removeItem(RESUME_STORAGE_KEY);
+    setResumeFile(null);
+    setResumeText("");
+    setJobDescription("");
+    setOptimizedResume("");
+    setEditedResume("");
+    setActiveTab("upload");
+    toast({
+      title: "Resume deleted",
+      description: "Your resume data has been cleared successfully.",
+    });
+  };
 
   const toggleEditMode = () => {
     setIsEditing(!isEditing)
@@ -327,6 +513,7 @@ export default function ResumeOptimizer() {
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
+
             </div>
           </div>
 
@@ -365,7 +552,25 @@ export default function ResumeOptimizer() {
                     <p className="text-sm font-medium truncate">{resumeFile.name}</p>
                     <p className="text-xs text-muted-foreground">{(resumeFile.size / 1024).toFixed(1)} KB</p>
                   </div>
-                  <Button variant="ghost" size="sm" className="ml-auto" onClick={() => setActiveTab("job-description")}>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={handleDeleteResume}
+                          className="h-8 w-8"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          <span className="sr-only">Delete resume</span>
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Delete resume</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <Button variant="ghost" size="sm" onClick={() => setActiveTab("job-description")}>
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
@@ -548,32 +753,71 @@ export default function ResumeOptimizer() {
                       <PopoverContent className="w-80">
                         <div className="grid gap-4">
                           <div className="space-y-2">
-                            <h4 className="font-medium leading-none">Template Preview</h4>
-                            <p className="text-sm text-muted-foreground">Choose a template for your final resume PDF</p>
+                            <h4 className="font-medium leading-none">Resume Templates</h4>
+                            <p className="text-sm text-muted-foreground">Choose a template for your resume</p>
                           </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="border rounded p-2 hover:border-primary cursor-pointer">
-                              <div className="aspect-[8.5/11] bg-muted rounded-sm"></div>
-                              <p className="text-xs text-center mt-1">Professional</p>
-                            </div>
-                            <div className="border rounded p-2 hover:border-primary cursor-pointer">
-                              <div className="aspect-[8.5/11] bg-muted rounded-sm"></div>
-                              <p className="text-xs text-center mt-1">Modern</p>
-                            </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            {getTemplates().map((template) => (
+                              <div
+                                key={template.path}
+                                className={`border rounded p-2 hover:border-primary cursor-pointer ${
+                                  selectedTemplate.path === template.path ? 'border-primary' : ''
+                                }`}
+                                onClick={() => setSelectedTemplate(template)}
+                              >
+                                <div className="aspect-[8.5/11] relative rounded-sm overflow-hidden">
+                                  <img
+                                    src={`/templates/${template.name.toLowerCase().replace(/\s+/g, '-')}.png`}
+                                    alt={template.name}
+                                    className="object-cover"
+                                  />
+                                </div>
+                                <div className="mt-2 space-y-1">
+                                  <p className="text-sm font-medium text-center">{template.name}</p>
+                                  {template.source && (
+                                    <a
+                                      href={template.source}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-xs text-blue-500 hover:underline text-center block"
+                                    >
+                                      Source
+                                    </a>
+                                  )}
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       </PopoverContent>
                     </Popover>
                   </Label>
-                  <Select value={latexTemplate} onValueChange={setLatexTemplate}>
+                  <Select
+                    value={selectedTemplate.path}
+                    onValueChange={(path) => setSelectedTemplate(getTemplates().find(t => t.path === path) || getTemplates()[0])}
+                  >
                     <SelectTrigger id="latex-template" className="w-full">
                       <SelectValue placeholder="Select Template" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="professional">Professional</SelectItem>
-                      <SelectItem value="academic">Academic</SelectItem>
-                      <SelectItem value="modern">Modern</SelectItem>
-                      <SelectItem value="creative">Creative</SelectItem>
+                      {getTemplates().map((template) => (
+                        <SelectItem key={template.path} value={template.path}>
+                          <div className="flex items-center justify-between w-full">
+                            <span>{template.name}</span>
+                            {template.source && (
+                              <a
+                                href={template.source}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-xs text-blue-500 hover:underline ml-2"
+                              >
+                                Source
+                              </a>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

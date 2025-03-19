@@ -1,28 +1,66 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server";
+import { readFileSync } from "fs";
+import { exec } from "child_process";
+import { promisify } from "util";
+import { writeFile, mkdir } from "fs/promises";
+import path from "path";
 
-// This is a placeholder for a real LaTeX generation service
-// In a real app, you would use a LaTeX library or service to generate PDFs
+const execAsync = promisify(exec);
 
-export async function POST(request: NextRequest) {
+export async function POST(req: NextRequest) {
   try {
-    const { resumeText, template } = await request.json()
+    const { content, template } = await req.json();
 
-    if (!resumeText) {
-      return NextResponse.json({ error: "Resume text is required" }, { status: 400 })
+    if (!content || !template) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
     }
 
-    // In a real app, this would generate LaTeX and convert to PDF
-    // For demo purposes, we'll just return a success message
+    // Read the template
+    const templateContent = readFileSync(template, "utf-8");
 
-    return NextResponse.json({
-      success: true,
-      message: "LaTeX generated successfully",
-      // This would be a URL to the generated PDF in a real app
-      pdfUrl: "/api/download/resume.pdf",
-    })
+    // Create temp directory if it doesn't exist
+    const tempDir = path.join(process.cwd(), "temp");
+    await mkdir(tempDir, { recursive: true });
+
+    // Create unique filename for this request
+    const timestamp = Date.now();
+    const texFile = path.join(tempDir, `resume_${timestamp}.tex`);
+    const pdfFile = path.join(tempDir, `resume_${timestamp}.pdf`);
+
+    // Insert content into template
+    // This is a simple replacement - you may need to adjust based on your template structure
+    const finalContent = templateContent.replace("%RESUME_CONTENT%", content);
+
+    // Write the TeX file
+    await writeFile(texFile, finalContent);
+
+    // Run pdflatex twice to resolve references
+    await execAsync(`pdflatex -output-directory ${tempDir} ${texFile}`);
+    await execAsync(`pdflatex -output-directory ${tempDir} ${texFile}`);
+
+    // Read the generated PDF
+    const pdfContent = readFileSync(pdfFile);
+
+    // Clean up temp files
+    await execAsync(`rm ${tempDir}/resume_${timestamp}.*`);
+
+    // Return the PDF
+    return new NextResponse(pdfContent, {
+      headers: {
+        "Content-Type": "application/pdf",
+        "Content-Disposition": 'attachment; filename="resume.pdf"'
+      }
+    });
+
   } catch (error) {
-    console.error("Error generating LaTeX:", error)
-    return NextResponse.json({ error: "Failed to generate LaTeX" }, { status: 500 })
+    console.error("PDF generation error:", error);
+    return NextResponse.json(
+      { error: "Failed to generate PDF" },
+      { status: 500 }
+    );
   }
 }
 
