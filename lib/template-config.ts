@@ -3,25 +3,29 @@ export interface TemplateMetadata {
   path: string;
   source?: string;
   description?: string;
+  latexContent: string;
 }
 
 export const templateConfig: TemplateMetadata[] = [
   {
     name: "Default Resume",
     path: "templates/latex/Default_Resume-template.tex",
-    description: "Clean and professional resume template with modern typography"
+    description: "Clean and professional resume template with modern typography",
+    latexContent: getSampleContent()
   },
   {
     name: "John Miller CV",
     path: "templates/latex/John_Miller_CV.tex",
     source: "https://www.overleaf.com/latex/templates/jakes-resume/syzfjbzwjncs",
-    description: "Two-column CV template with a modern design"
+    description: "Two-column CV template with a modern design",
+    latexContent: getSampleContent()
   },
   {
     name: "Modular Professional CV",
     path: "templates/latex/Modular_professional_CV.tex",
     source: "https://www.overleaf.com/latex/templates/modular-professional-cv/cffcktvtxxmr",
-    description: "Highly customizable professional CV template"
+    description: "Highly customizable professional CV template",
+    latexContent: getSampleContent()
   }
 ];
 

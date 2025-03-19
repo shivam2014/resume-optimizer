@@ -146,9 +146,6 @@ importers:
       input-otp:
         specifier: 1.4.1
         version: 1.4.1(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
-      katex:
-        specifier: ^0.16.21
-        version: 0.16.21
       latex.js:
         specifier: ^0.12.6
         version: 0.12.6
@@ -185,9 +182,6 @@ importers:
       react-hook-form:
         specifier: ^7.54.1
         version: 7.54.2(react@19.0.0)
-      react-katex:
-        specifier: ^3.0.1
-        version: 3.0.1(prop-types@15.8.1)(react@19.0.0)
       react-latex-next:
         specifier: ^3.0.0
         version: 3.0.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -237,9 +231,6 @@ importers:
       '@types/jest':
         specifier: ^29.5.14
         version: 29.5.14
-      '@types/katex':
-        specifier: ^0.16.7
-        version: 0.16.7
       '@types/node':
         specifier: ^22
         version: 22.13.10
@@ -252,9 +243,6 @@ importers:
       '@types/react-dom':
         specifier: ^19
         version: 19.0.4(@types/react@19.0.11)
-      '@types/react-katex':
-        specifier: ^3.0.4
-        version: 3.0.4
       dotenv:
         specifier: ^16.4.7
         version: 16.4.7
@@ -1623,9 +1611,6 @@ packages:
   '@types/jsdom@20.0.1':
     resolution: {integrity: sha512-d0r18sZPmMQr1eG35u12FZfhIXNrnsPU/g5wvRKCUf/tOGilKKwYMYGqh33BNR6ba+2gkHw1EUiHoN3mn7E5IQ==}
 
-  '@types/katex@0.16.7':
-    resolution: {integrity: sha512-HMwFiRujE5PjrgwHQ25+bsLJgowjGjm5Z8FVSf0N6PwgJrwxH0QxzHYDcKsTfV3wva0vzrpqMTJS2jXPr5BMEQ==}
-
   '@types/node-fetch@2.6.12':
     resolution: {integrity: sha512-8nneRWKCg3rMtF69nLQJnOYUcbafYeFSjqkw3jCRLsqkWFlHaoQrr5mXmofFGOx3DKn7UfmBMyov8ySvLRVldA==}
 
@@ -1639,9 +1624,6 @@ packages:
     resolution: {integrity: sha512-4fSQ8vWFkg+TGhePfUzVmat3eC14TXYSsiiDSLI0dVLsrm9gZFABjPy/Qu6TKgl1tq1Bu1yDsuQgY3A3DOjCcg==}
     peerDependencies:
       '@types/react': ^19.0.0
-
-  '@types/react-katex@3.0.4':
-    resolution: {integrity: sha512-aLkykKzSKLpXI6REJ3uClao6P47HAFfR1gcHOZwDeTuALsyjgMhz+oynLV4gX0kiJVnvHrBKF/TLXqyNTpHDUg==}
 
   '@types/react@19.0.11':
     resolution: {integrity: sha512-vrdxRZfo9ALXth6yPfV16PYTLZwsUWhVjjC+DkfE5t1suNSbBrWC9YqSuuxJZ8Ps6z1o2ycRpIqzZJIgklq4Tw==}
@@ -3501,12 +3483,6 @@ packages:
 
   react-is@18.3.1:
     resolution: {integrity: sha512-/LLMVyas0ljjAtoYiPqYiL8VWXzUUdThrmU5+n20DZv+a+ClRoevUzw5JxU+Ieh5/c87ytoTBV9G1FiKfNJdmg==}
-
-  react-katex@3.0.1:
-    resolution: {integrity: sha512-wIUW1fU5dHlkKvq4POfDkHruQsYp3fM8xNb/jnc8dnQ+nNCnaj0sx5pw7E6UyuEdLRyFKK0HZjmXBo+AtXXy0A==}
-    peerDependencies:
-      prop-types: ^15.8.1
-      react: '>=15.3.2 <=18'
 
   react-latex-next@3.0.0:
     resolution: {integrity: sha512-x70f1b1G7TronVigsRgKHKYYVUNfZk/3bciFyYX1lYLQH2y3/TXku3+5Vap8MDbJhtopePSYBsYWS6jhzIdz+g==}
@@ -5699,8 +5675,6 @@ snapshots:
       '@types/tough-cookie': 4.0.5
       parse5: 7.2.1
 
-  '@types/katex@0.16.7': {}
-
   '@types/node-fetch@2.6.12':
     dependencies:
       '@types/node': 22.13.10
@@ -5713,10 +5687,6 @@ snapshots:
       undici-types: 6.20.0
 
   '@types/react-dom@19.0.4(@types/react@19.0.11)':
-    dependencies:
-      '@types/react': 19.0.11
-
-  '@types/react-katex@3.0.4':
     dependencies:
       '@types/react': 19.0.11
 
@@ -7805,12 +7775,6 @@ snapshots:
   react-is@17.0.2: {}
 
   react-is@18.3.1: {}
-
-  react-katex@3.0.1(prop-types@15.8.1)(react@19.0.0):
-    dependencies:
-      katex: 0.16.21
-      prop-types: 15.8.1
-      react: 19.0.0
 
   react-latex-next@3.0.0(react-dom@19.0.0(react@19.0.0))(react@19.0.0):
     dependencies:

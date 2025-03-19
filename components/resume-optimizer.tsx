@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { getTemplates, TemplateMetadata } from "@/lib/template-config"
+import ClientLatexPreview from "@/components/ClientLatexPreview"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -766,10 +767,9 @@ export default function ResumeOptimizer() {
                                 onClick={() => setSelectedTemplate(template)}
                               >
                                 <div className="aspect-[8.5/11] relative rounded-sm overflow-hidden">
-                                  <img
-                                    src={`/templates/${template.name.toLowerCase().replace(/\s+/g, '-')}.png`}
-                                    alt={template.name}
-                                    className="object-cover"
+                                  <ClientLatexPreview
+                                    content={template.latexContent}
+                                    className="w-full h-full"
                                   />
                                 </div>
                                 <div className="mt-2 space-y-1">

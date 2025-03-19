@@ -1,17 +1,20 @@
 declare module 'latex.js' {
-  export class HtmlGenerator {
+  export class LaTeX {
     constructor(options: {
       hyphenate?: boolean;
-      styleSheet?: string[];
+      mathjax?: {
+        displayMath: [string, string][];
+        inlineMath: [string, string][];
+      };
     });
-    stylesAndScripts(): string;
-    documentFragment: {
-      innerHTML: string;
-    };
+    
+    render(
+      content: string,
+      options: {
+        format: 'html';
+        documentClass: string;
+        packages: string[];
+      }
+    ): HTMLElement;
   }
-
-  export function parse(
-    content: string,
-    options: { generator: HtmlGenerator }
-  ): void;
 }
