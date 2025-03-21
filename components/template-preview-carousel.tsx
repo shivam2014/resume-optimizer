@@ -1,14 +1,17 @@
-import { useState, useEffect } from 'react';
-import ClientLatexPreview from './ClientLatexPreview';
+import { useState } from 'react';
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { Button } from './ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+
+const DEFAULT_PREVIEW_IMAGE = '/placeholder.jpg';
 
 interface TemplatePreviewCarouselProps {
   templates: {
     id: string;
     latexContent: string;
     name: string;
+    previewImage?: string;
   }[];
 }
 
@@ -31,11 +34,16 @@ export function TemplatePreviewCarousel({ templates }: TemplatePreviewCarouselPr
         <div className="overflow-hidden rounded-lg shadow-lg">
           <div className="transition-transform duration-300 ease-in-out">
             {templates[currentIndex] ? (
-              <ClientLatexPreview
-                key={templates[currentIndex].id}
-                content={templates[currentIndex].latexContent}
-                className="w-full min-h-[300px] md:min-h-[400px] lg:min-h-[500px]"
-              />
+              <div className="relative w-full min-h-[300px] md:min-h-[400px] lg:min-h-[500px]">
+                <Image
+                  key={templates[currentIndex].id}
+                  src={templates[currentIndex].previewImage || DEFAULT_PREVIEW_IMAGE}
+                  alt={templates[currentIndex].name}
+                  fill
+                  className="object-contain"
+                  priority
+                />
+              </div>
             ) : (
               <div className="w-full min-h-[300px] md:min-h-[400px] lg:min-h-[500px] flex items-center justify-center bg-muted">
                 <p className="text-muted-foreground">No template selected</p>

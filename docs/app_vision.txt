@@ -1,0 +1,23 @@
+The code has been updated.  Get the latest code version from the git repository first at : https://github.com/shivam2014/resume-optimizer
+
+Now plan of action.
+In the resume choice option, I would like to show the user the option to choose amongst the preloaded resume templates and ability to upload or remove their own loaded latex template.  The resume choosing should look like this : 
+https://flowcv.com/resume-templates
+
+
+However, the templates I want to load are the templates are stored in templates/latex folder in the server.
+
+The work flow is, 
+1. upload Resume to extract the resume content via the api, 
+2. set up api if not setup already in settings
+3. proceed with the resume content extraction, show the extracted resume content in an elegant manner (hidden by default, show if user desires to see what is extracted by the AI API).
+4. proceed visually to resume selection template page as described earlier for the chosen templates.  Allow user to add or remove their own latex template.  
+5. In the next step, allow user to either give their job details in text form or extract them from a weblink ,  from which the AI API can extract the job description. 
+6. Also allow the user to define custom instructions to defined their resume optimisation preferences for example, optimise the resume to one line per sentence ?  This custom instruction will overule the RESUME_GUIDELINES.md,not completely, but the clashing parts only.  Give this task of updating the RESUME_GUIDELINES for this instance only to the AI API to do via an effective prompt.  Allow the user to see the default resume guideline rules in settings tab maybe ?
+7. With the custom or default resume guidelines,  job description extracted, Next step is to use them all to update their resume content first based on the guidelines via an effective prompt sent to the API. 
+8.  Finally allow the user to see the changes in their resume content, before vs after in a comparison mode, highlighting the key changes.  Allow the user to make modifications over the proposed changes.
+9. Keeping the final resume content modifications, pass the latex resume template and the final resume content to the AI API, giving the updated resume template.
+10.  At the end, allow the user to preview the final compiled version of the latex template generated finally.  This can also be a pdf, whichever is easier keeping both mobile and desktop users in mind on the web. Allow the user to go back to reedit if something is wrong and regenerate the final resume template.  Also allow the user to download the pdf version of the latex template as well as the modified .tex template for themselves.
+
+
+The workflow may not translate exactly in the GUI workflow, but take the inspiration on it being an easy to use, modern, super elegant and technically advanced app, focusing on simplicity and delivering value to the end user.

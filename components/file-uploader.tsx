@@ -1,20 +1,18 @@
-"use client"
-
-import type React from "react"
-
 import { useState, useRef } from "react"
-import { Upload, FileText } from "lucide-react"
+import { Upload, FileText, Loader2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { motion } from "framer-motion"
+import { extractPDFText } from "@/lib/pdf-extractor"
 
 interface FileUploaderProps {
-  onFileUpload: (file: File) => void
+  onFileUpload: (file: File, extractedText?: string) => void
   acceptedFileTypes: string
   maxSizeMB: number
 }
 
 export default function FileUploader({ onFileUpload, acceptedFileTypes, maxSizeMB }: FileUploaderProps) {
   const [isDragging, setIsDragging] = useState(false)
+  const [isProcessing, setIsProcessing] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
 
@@ -27,22 +25,22 @@ export default function FileUploader({ onFileUpload, acceptedFileTypes, maxSizeM
     setIsDragging(false)
   }
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault()
     setIsDragging(false)
 
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      validateAndUploadFile(e.dataTransfer.files[0])
+      await validateAndUploadFile(e.dataTransfer.files[0])
     }
   }
 
-  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      validateAndUploadFile(e.target.files[0])
+      await validateAndUploadFile(e.target.files[0])
     }
   }
 
-  const validateAndUploadFile = (file: File) => {
+  const validateAndUploadFile = async (file: File) => {
     // Check file type
     const fileExtension = `.${file.name.split(".").pop()?.toLowerCase()}`
     const isValidType = acceptedFileTypes.includes(fileExtension)
@@ -67,8 +65,35 @@ export default function FileUploader({ onFileUpload, acceptedFileTypes, maxSizeM
       return
     }
 
-    // All validations passed
-    onFileUpload(file)
+    try {
+      setIsProcessing(true)
+      let extractedText: string | undefined
+
+      // Handle PDF files
+      if (fileExtension === '.pdf') {
+        try {
+          extractedText = await extractPDFText(file)
+        } catch (error) {
+          toast({
+            title: "PDF Processing Error",
+            description: "Failed to extract text from PDF file",
+            variant: "destructive",
+          })
+          return
+        }
+      }
+
+      // Pass both file and extracted text to parent
+      onFileUpload(file, extractedText)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "An error occurred while processing the file",
+        variant: "destructive",
+      })
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   return (
@@ -94,30 +119,32 @@ export default function FileUploader({ onFileUpload, acceptedFileTypes, maxSizeM
 
       <div className="flex flex-col items-center justify-center gap-3">
         <div className="bg-primary/10 p-4 rounded-full">
-          <Upload className="h-6 w-6 text-primary" />
+          {isProcessing ? (
+            <Loader2 className="h-6 w-6 text-primary animate-spin" />
+          ) : (
+            <Upload className="h-6 w-6 text-primary" />
+          )}
         </div>
         <div className="space-y-1">
-          <p className="font-medium">Click to upload or drag and drop</p>
+          <p className="font-medium">
+            {isProcessing ? "Processing file..." : "Click to upload or drag and drop"}
+          </p>
           <p className="text-sm text-muted-foreground">
             {acceptedFileTypes.replace(/,/g, ", ")} (Max {maxSizeMB}MB)
           </p>
         </div>
         <div className="flex items-center justify-center gap-2 mt-2">
-          <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
-            <FileText className="h-3 w-3" />
-            PDF
-          </div>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
-            <FileText className="h-3 w-3" />
-            DOCX
-          </div>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full">
-            <FileText className="h-3 w-3" />
-            TXT
-          </div>
+          {acceptedFileTypes.split(",").map((type) => (
+            <div
+              key={type}
+              className="flex items-center gap-1 text-xs text-muted-foreground bg-muted px-2 py-1 rounded-full"
+            >
+              <FileText className="h-3 w-3" />
+              {type.replace(".", "").toUpperCase()}
+            </div>
+          ))}
         </div>
       </div>
     </motion.div>
   )
 }
-

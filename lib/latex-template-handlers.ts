@@ -1,3 +1,5 @@
+import fs from 'fs/promises';
+import path from 'path';
 import { TemplateMetadata, getImagePlaceholder, validateTemplateRequirements } from './template-config';
 
 interface TemplateConfig {
@@ -50,29 +52,51 @@ const templateConfigs: Record<string, TemplateConfig> = {
         background: #fff;
       }
     `
-  },
-  'Modular_professional_CV.tex': {
-    contentPlaceholder: '%RESUME_CONTENT%',
-    sampleContent: `
-\\section{Work Experience}{\\workIcon}
-\\cvEntryNTPLD
-    {Company Name}{2020 -- Present}
-    {Senior Developer}{Location}{
-    \\cvItemS{Python, JavaScript, React}
-    \\cvItem{Led development of key features}
-    \\cvItem{Improved system performance by 50\\%}
-}`,
-    transformContent: (content: string) => {
-      return content.replace(/\\section{([^}]+)}/g, '\\section{$1}{\\workIcon}');
-    },
-    previewStyles: `
-      .preview-container {
-        font-family: "Fira Sans", sans-serif;
-        color: #333;
-      }
-    `
   }
 };
+
+/**
+ * Loads a LaTeX template from the filesystem
+ */
+export async function loadTemplate(templatePath: string): Promise<TemplateMetadata> {
+  try {
+    const fullPath = path.join(process.cwd(), templatePath);
+    const latexContent = await fs.readFile(fullPath, 'utf-8');
+    
+    const name = path.basename(templatePath, '.tex');
+    const template: TemplateMetadata = {
+      name,
+      path: templatePath,
+      latexContent
+    };
+
+    // Extract required packages from template content
+    const packageRegex = /\\usepackage(?:\[.*?\])?\{([^}]+)\}/g;
+    const customPackages: string[] = [];
+    let match;
+    while ((match = packageRegex.exec(latexContent)) !== null) {
+      customPackages.push(match[1]);
+    }
+    template.customPackages = customPackages;
+
+    return template;
+  } catch (error) {
+    throw new Error(`Failed to load template ${templatePath}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  }
+}
+
+/**
+ * Lists all available LaTeX templates in the templates directory
+ */
+export async function listAvailableTemplates(): Promise<string[]> {
+  try {
+    const templatesDir = path.join(process.cwd(), 'templates/latex');
+    const files = await fs.readdir(templatesDir);
+    return files.filter(file => file.endsWith('.tex'));
+  } catch (error) {
+    throw new Error('Failed to list available templates');
+  }
+}
 
 export function getTemplateConfig(templatePath: string): TemplateConfig {
   const templateName = templatePath.split('/').pop() || '';
@@ -123,25 +147,24 @@ export async function transformTemplateContent(template: TemplateMetadata, conte
       );
     }
 
-    // Add font package warnings
-    if (template.requiredFonts) {
-      if (!transformedContent.includes('\\documentclass')) {
-        console.warn('Template missing documentclass declaration');
+    // Check and handle required fonts
+    if (template.requiredFonts?.length) {
+      const fontWarnings = template.requiredFonts
+        .filter(font => !transformedContent.includes(`\\usepackage{${font}}`))
+        .map(font => `% Warning: Template requires ${font} font package`);
+      
+      if (fontWarnings.length > 0) {
+        transformedContent = transformedContent.replace(
+          /\\documentclass.*?\n/,
+          `$&${fontWarnings.join('\n')}\n`
+        );
       }
-      template.requiredFonts.forEach(font => {
-        if (!transformedContent.includes(`\\usepackage{${font}}`)) {
-          transformedContent = transformedContent.replace(
-            /\\documentclass.*?\n/,
-            `$&% Warning: Template requires ${font} font package\n`
-          );
-        }
-      });
     }
 
     return transformedContent;
   } catch (error) {
     console.error('Error transforming template content:', error);
-    return content; // Return original content if transformation fails
+    throw new Error('Failed to transform template content');
   }
 }
 
@@ -159,6 +182,19 @@ export async function validateLatexTemplate(template: TemplateMetadata): Promise
   const warnings: string[] = [];
 
   try {
+    // Check basic structure
+    if (!template.latexContent?.includes('\\documentclass')) {
+      errors.push('Missing document class declaration');
+    }
+
+    if (!template.latexContent?.includes('\\begin{document}')) {
+      errors.push('Missing document environment');
+    }
+
+    if (!template.latexContent?.includes('\\end{document}')) {
+      errors.push('Missing end of document');
+    }
+
     // Check for required packages
     const requiredPackages = ['fontenc', 'inputenc', 'geometry'];
     requiredPackages.forEach(pkg => {
@@ -168,22 +204,10 @@ export async function validateLatexTemplate(template: TemplateMetadata): Promise
     });
 
     // Check custom package requirements
-    if (template.customPackages) {
-      template.customPackages.forEach(pkg => {
-        if (!template.latexContent?.includes(`\\usepackage{${pkg}}`)) {
-          errors.push(`Missing required package: ${pkg}`);
-        }
-      });
+    if (template.customPackages?.length) {
+      const requirementErrors = await validateTemplateRequirements(template);
+      errors.push(...requirementErrors);
     }
-
-    // Check document structure
-    if (!template.latexContent?.includes('\\begin{document}')) {
-      errors.push('Missing document environment');
-    }
-
-    // Validate template requirements
-    const requirementErrors = await validateTemplateRequirements(template);
-    errors.push(...requirementErrors);
 
     return {
       isValid: errors.length === 0,
@@ -191,11 +215,10 @@ export async function validateLatexTemplate(template: TemplateMetadata): Promise
       warnings
     };
   } catch (error) {
-    console.error('Error validating template:', error);
     return {
       isValid: false,
-      errors: ['Failed to validate template'],
-      warnings: []
+      errors: ['Failed to validate template: ' + (error instanceof Error ? error.message : 'Unknown error')],
+      warnings
     };
   }
 }

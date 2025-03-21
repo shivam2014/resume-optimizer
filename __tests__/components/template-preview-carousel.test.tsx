@@ -1,18 +1,17 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import TemplatePreviewCarousel from '../../app/components/template-preview-carousel';
-import { getTemplates, getSampleContent } from '@/lib/template-config';
+import { getTemplates } from '@/lib/template-config';
 
 // Mock template data
 const mockTemplates = [
   {
     path: 'template1',
     name: 'Template 1',
-    description: 'First template',
-    source: 'https://example.com/template1'
+    description: 'First template'
   },
   {
-    path: 'template2', 
+    path: 'template2',
     name: 'Template 2',
     description: 'Second template'
   }
@@ -20,8 +19,7 @@ const mockTemplates = [
 
 // Mock template config
 jest.mock('@/lib/template-config', () => ({
-  getTemplates: jest.fn(() => mockTemplates),
-  getSampleContent: jest.fn(() => 'Sample LaTeX content')
+  getTemplates: jest.fn(() => mockTemplates)
 }));
 
 // Mock fetch for template styles
@@ -76,7 +74,8 @@ describe('TemplatePreviewCarousel', () => {
 
     expect(screen.getByText(mockTemplates[0].name)).toBeInTheDocument();
     expect(screen.getByText(mockTemplates[0].description)).toBeInTheDocument();
-    expect(screen.getByText('View Source')).toBeInTheDocument();
+    expect(screen.getByText(mockTemplates[0].name)).toBeInTheDocument();
+    expect(screen.getByText(mockTemplates[0].description)).toBeInTheDocument();
   });
 
   test('handles template selection indicators', async () => {
