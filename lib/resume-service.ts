@@ -1,7 +1,21 @@
 import { validateApiKey } from "./api-key-validation";
+import { Logger } from "./logger";
 
 export type ApiProvider = "mistral" | "openai" | "claude" | "deepseek";
-import { Logger } from "./logger";
+
+export interface ProcessingResult {
+  extractedText: string;
+  optimizedText: string;
+  latexContent?: string;
+}
+
+interface ResumeProcessingParams {
+  resumeText: string;
+  jobDescription: string;
+  provider: ApiProvider;
+  apiKey: string;
+  template?: string;
+}
 
 interface OptimizeResumeParams {
   resumeText: string;
@@ -18,7 +32,25 @@ interface OptimizationResult {
 
 const logger = new Logger("resume-service");
 
-export async function optimizeResume({
+export async function extractResumeText(text: string): Promise<string> {
+  try {
+    logger.info("Starting text extraction");
+    // Remove any special characters and normalize whitespace
+    const cleanedText = text
+      .replace(/[^\w\s.,]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    
+    logger.info("Text extraction completed");
+    return cleanedText;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+    logger.error("Text extraction failed", { error: errorMessage });
+    throw new Error(`Text extraction failed: ${errorMessage}`);
+  }
+}
+
+export async function optimizeResumeText({
   resumeText,
   jobDescription,
   provider,
@@ -34,11 +66,9 @@ export async function optimizeResume({
 
     logger.info("Starting resume optimization", { provider });
 
-    // Provider-specific API endpoints and parameters
     const endpoint = getProviderEndpoint(provider);
     const modelParams = getModelParameters(provider);
 
-    // Make API request to the selected provider
     const response = await fetch(endpoint, {
       method: "POST",
       headers: {
@@ -67,18 +97,84 @@ export async function optimizeResume({
     }
 
     const data = await response.json();
-    
-    // Process and format the response
     const result = processProviderResponse(data, provider);
     
     logger.info("Resume optimization completed", { provider });
-    
     return result;
 
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
     logger.error("Resume optimization failed", { error: errorMessage });
     throw new Error(`Resume optimization failed: ${errorMessage}`);
+  }
+}
+
+export async function generateLatexFromTemplate(
+  optimizedText: string,
+  template?: string
+): Promise<string> {
+  try {
+    logger.info("Starting LaTeX generation");
+    
+    if (!template) {
+      logger.info("No template provided, using default template");
+      return optimizedText; // Return plain text if no template is provided
+    }
+
+    // Basic LaTeX template implementation
+    const latexContent = `
+\\documentclass{article}
+\\begin{document}
+${optimizedText}
+\\end{document}`;
+
+    logger.info("LaTeX generation completed");
+    return latexContent;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+    logger.error("LaTeX generation failed", { error: errorMessage });
+    throw new Error(`LaTeX generation failed: ${errorMessage}`);
+  }
+}
+
+export async function processResume({
+  resumeText,
+  jobDescription,
+  provider,
+  apiKey,
+  template,
+}: ResumeProcessingParams): Promise<ProcessingResult> {
+  try {
+    logger.info("Starting resume processing workflow");
+
+    // Step 1: Extract text
+    const extractedText = await extractResumeText(resumeText);
+    
+    // Step 2: Optimize the resume
+    const { optimizedText } = await optimizeResumeText({
+      resumeText: extractedText,
+      jobDescription,
+      provider,
+      apiKey,
+    });
+
+    // Step 3: Generate LaTeX if template is provided
+    const latexContent = template 
+      ? await generateLatexFromTemplate(optimizedText, template)
+      : undefined;
+
+    logger.info("Resume processing workflow completed");
+
+    return {
+      extractedText,
+      optimizedText,
+      latexContent,
+    };
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
+    logger.error("Resume processing workflow failed", { error: errorMessage });
+    throw new Error(`Resume processing failed: ${errorMessage}`);
   }
 }
 

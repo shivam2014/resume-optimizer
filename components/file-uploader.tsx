@@ -8,9 +8,10 @@ interface FileUploaderProps {
   onFileUpload: (file: File, extractedText?: string) => void
   acceptedFileTypes: string
   maxSizeMB: number
+  testId?: string
 }
 
-export default function FileUploader({ onFileUpload, acceptedFileTypes, maxSizeMB }: FileUploaderProps) {
+export default function FileUploader({ onFileUpload, acceptedFileTypes, maxSizeMB, testId }: FileUploaderProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -115,6 +116,7 @@ export default function FileUploader({ onFileUpload, acceptedFileTypes, maxSizeM
         onChange={handleFileInputChange}
         accept={acceptedFileTypes}
         className="hidden"
+        data-testid={testId}
       />
 
       <div className="flex flex-col items-center justify-center gap-3">

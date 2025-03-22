@@ -9,9 +9,9 @@ exports[`StaticTemplatePreviewCarousel matches snapshot 1`] = `
       class="rounded-lg border bg-card text-card-foreground shadow-sm w-full aspect-[16/9] relative overflow-hidden"
     >
       <img
-        alt="Modern Template"
+        alt="Preview of Modern Template template"
         data-testid="next-image"
-        src="/templates/modern-1.png"
+        src="/templates/latex/templates/modern-1.png"
       />
     </div>
     <div

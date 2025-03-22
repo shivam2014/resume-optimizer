@@ -4,7 +4,17 @@ import { useState, useEffect } from "react"
 import { getTemplates } from "@/lib/template-config"
 import type { TemplateMetadata } from "@/types/templates"
 import { ErrorBoundary } from "@/components/error-boundary"
-import { OptimizationResponse } from "@/types/api"
+
+interface OptimizationResponse {
+  result: {
+    optimizedText: string;
+    extractedText: string;
+    latexContent: string;
+    improvements: string[];
+    score: number;
+  };
+  error?: string;
+}
 import LatexPreview from "@/components/latex-preview"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -53,8 +63,10 @@ interface StoredResumeData {
   fileSize: number
   resumeText: string
   jobDescription: string
+  extractedResume: string
   optimizedResume: string
   editedResume: string
+  latexContent: string
   lastUpdated: number
 }
 
@@ -63,8 +75,10 @@ export default function ResumeOptimizer() {
   const [resumeFile, setResumeFile] = useState<File | null>(null)
   const [resumeText, setResumeText] = useState("")
   const [jobDescription, setJobDescription] = useState("")
+  const [extractedResume, setExtractedResume] = useState("")
   const [optimizedResume, setOptimizedResume] = useState("")
   const [editedResume, setEditedResume] = useState("")
+  const [latexContent, setLatexContent] = useState("")
   const [isOptimizing, setIsOptimizing] = useState(false)
   const [optimizationProgress, setOptimizationProgress] = useState(0)
   const [activeTab, setActiveTab] = useState("upload")
@@ -100,9 +114,10 @@ export default function ResumeOptimizer() {
         if (isRecent) {
           setResumeText(parsedState.resumeText)
           setJobDescription(parsedState.jobDescription)
-          // Ensure we're getting string values
+          setExtractedResume(parsedState.extractedResume || '')
           setOptimizedResume(typeof parsedState.optimizedResume === 'string' ? parsedState.optimizedResume : '')
           setEditedResume(typeof parsedState.editedResume === 'string' ? parsedState.editedResume : '')
+          setLatexContent(parsedState.latexContent || '')
           
           // Create a new File object from the stored metadata
           // Note: We can't restore the actual File object, but we can create a placeholder
@@ -139,8 +154,10 @@ export default function ResumeOptimizer() {
           fileSize: resumeFile?.size || 0,
           resumeText,
           jobDescription,
+          extractedResume: extractedResume || '',
           optimizedResume: typeof optimizedResume === 'string' ? optimizedResume : '',
           editedResume: typeof editedResume === 'string' ? editedResume : '',
+          latexContent: latexContent || '',
           lastUpdated: Date.now()
         }
         localStorage.setItem(RESUME_STORAGE_KEY, JSON.stringify(stateToStore))
@@ -148,7 +165,7 @@ export default function ResumeOptimizer() {
         console.error('Error saving resume state:', error)
       }
     }
-  }, [resumeFile, resumeText, jobDescription, optimizedResume, editedResume])
+  }, [resumeFile, resumeText, jobDescription, extractedResume, optimizedResume, editedResume, latexContent])
 
   // Cleanup storage when component unmounts
   useEffect(() => {
@@ -266,8 +283,10 @@ export default function ResumeOptimizer() {
               fileSize: file.size,
               resumeText: text,
               jobDescription: "",
+              extractedResume: "",
               optimizedResume: "",
               editedResume: "",
+              latexContent: "",
               lastUpdated: Date.now()
             }
             localStorage.setItem(RESUME_STORAGE_KEY, JSON.stringify(stateToStore))
@@ -399,15 +418,22 @@ export default function ResumeOptimizer() {
 
       const data = await response.json() as OptimizationResponse;
       
-      // Validate the response structure and extract text
-      if (!data.result?.optimizedText || typeof data.result.optimizedText !== 'string') {
-        throw new Error('Invalid response format: missing optimized text');
+      // Validate the response structure and extract data
+      if (!data.result || typeof data.result !== 'object') {
+        throw new Error('Invalid response format');
       }
 
-      // Set only the validated text content
-      const optimizedText = data.result.optimizedText.trim();
-      setOptimizedResume(optimizedText);
-      setEditedResume(optimizedText);
+      const { optimizedText, extractedText, latexContent } = data.result;
+
+      if (!optimizedText || typeof optimizedText !== 'string') {
+        throw new Error('Missing optimized text in response');
+      }
+
+      // Set all the content
+      setExtractedResume(extractedText?.trim() || resumeText.trim());
+      setOptimizedResume(optimizedText.trim());
+      setEditedResume(optimizedText.trim());
+      setLatexContent(latexContent?.trim() || '');
       
       setOptimizationProgress(100);
       setActiveTab("results");
@@ -429,6 +455,31 @@ export default function ResumeOptimizer() {
       setIsOptimizing(false)
     }
   }
+
+  const handleDownloadLatex = () => {
+    try {
+      const element = document.createElement("a");
+      const file = new Blob([latexContent], { type: 'text/plain' });
+      element.href = URL.createObjectURL(file);
+      element.download = "resume.tex";
+      document.body.appendChild(element);
+      element.click();
+      document.body.removeChild(element);
+      URL.revokeObjectURL(element.href);
+      
+      toast({
+        title: "LaTeX downloaded",
+        description: "Your LaTeX file has been downloaded successfully.",
+      });
+    } catch (error) {
+      console.error("LaTeX download error:", error);
+      toast({
+        title: "Download failed",
+        description: "Failed to download LaTeX file. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleDownloadPdf = async () => {
     try {
@@ -585,7 +636,12 @@ export default function ResumeOptimizer() {
                 </p>
               </div>
 
-              <FileUploader onFileUpload={handleFileUpload} acceptedFileTypes=".pdf,.docx,.txt,.tex" maxSizeMB={5} />
+              <FileUploader
+                onFileUpload={handleFileUpload}
+                acceptedFileTypes=".pdf,.docx,.txt,.tex"
+                maxSizeMB={5}
+                testId="file-upload-input"
+              />
 
               {resumeFile && (
                 <div className="flex items-center gap-2 p-3 border rounded-lg bg-muted/30">
@@ -660,6 +716,8 @@ export default function ResumeOptimizer() {
                   className="min-h-[200px] resize-none"
                   value={jobDescription}
                   onChange={(e) => setJobDescription(e.target.value)}
+                  data-testid="job-description-input"
+                  data-testid="job-description-input"
                 />
               </div>
 
@@ -945,23 +1003,45 @@ export default function ResumeOptimizer() {
                 </p>
               </div>
 
-              {isEditing ? (
-                <ResumeEditor
-                  originalText={resumeText}
-                  optimizedText={optimizedResume || ''}
-                  editedText={editedResume}
-                  onEditedTextChange={setEditedResume}
-                />
-              ) : (
-                <ComparisonView
-                  originalText={resumeText}
-                  optimizedText={editedResume || optimizedResume || ''}
-                />
+              <div data-testid="results-section">
+                <div className="flex justify-end space-x-2 mb-4">
+                  <Button onClick={handleDownloadPdf} data-testid="download-pdf-button">
+                    Download PDF
+                  </Button>
+                  <Button onClick={handleDownloadLatex} data-testid="download-latex-button">
+                    Download LaTeX
+                  </Button>
+                </div>
+                {isEditing ? (
+                  <ResumeEditor
+                    originalText={resumeText}
+                    optimizedText={optimizedResume || ''}
+                    editedText={editedResume}
+                    onEditedTextChange={setEditedResume}
+                    data-testid="resume-editor"
+                  />
+                ) : (
+                  <ComparisonView
+                    originalText={extractedResume}
+                    optimizedText={editedResume || optimizedResume || ''}
+                    data-testid="comparison-view"
+                  />
+                )}
+              </div>
               )}
 
               <div className="pt-4 flex flex-col sm:flex-row gap-2">
                 <Button variant="outline" onClick={() => setActiveTab("job-description")} className="flex-1">
                   Back to Edit
+                </Button>
+                <Button
+                  onClick={handleDownloadLatex}
+                  disabled={isOptimizing || !latexContent}
+                  variant="outline"
+                  className="flex-1"
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  Download LaTeX
                 </Button>
                 <Button onClick={handleDownloadPdf} className="flex-1 gap-2">
                   <Download className="h-4 w-4" />

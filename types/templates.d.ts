@@ -3,12 +3,15 @@ export interface ImagePlaceholders {
 }
 
 export interface BaseTemplateMetadata {
+  id: string;
+  name: string;
+}
+
+export interface TemplateMetadata {
+  id: string;
   name: string;
   path: string;
   latexContent: string;
-}
-
-export interface TemplateMetadata extends BaseTemplateMetadata {
   description?: string;
   source?: string;
   imagePlaceholders?: ImagePlaceholders;

@@ -1,10 +1,7 @@
 import { execFile, ChildProcess, ExecFileException, ExecFileOptions } from 'node:child_process';
-import {
-  getTemplates,
-  getImagePlaceholder,
-  validateTemplateRequirements,
-  TemplateMetadata
-} from '../../lib/template-config';
+import { getTemplates, getImagePlaceholder } from '../../lib/template-config';
+import { validateTemplateRequirements } from '../../lib/template-validation';
+import { TemplateMetadata } from '../../types/templates';
 
 // Mock the modules
 jest.mock('node:child_process');
@@ -20,18 +17,32 @@ describe('Template Configuration', () => {
     jest.clearAllMocks();
   });
 
-  const mockTemplates = [
+  const mockTemplates: TemplateMetadata[] = [
     {
+      id: 'test1',
       name: 'Test Template 1',
       path: 'templates/latex/test1.tex',
       latexContent: '\\documentclass{article}',
-      description: 'Test template description'
+      description: 'Test template description',
+      source: 'internal',
+      imagePlaceholders: {},
+      requiredFonts: [],
+      customPackages: [],
+      previewImage: '/templates/test1.png',
+      isDefault: false
     },
     {
+      id: 'test2',
       name: 'Test Template 2',
       path: 'templates/latex/test2.tex',
       latexContent: '\\documentclass{article}',
-      description: 'Test template description'
+      description: 'Test template description',
+      source: 'internal',
+      imagePlaceholders: {},
+      requiredFonts: [],
+      customPackages: [],
+      previewImage: '/templates/test2.png',
+      isDefault: false
     }
   ];
 
@@ -69,12 +80,19 @@ describe('Template Configuration', () => {
 
   describe('getImagePlaceholder()', () => {
     const mockTemplate: TemplateMetadata = {
+      id: "test-template",
       name: "Test Template",
       path: "templates/latex/test.tex",
       latexContent: "",
       imagePlaceholders: {
         "test.jpg": "/custom-placeholder.jpg"
-      }
+      },
+      description: "Test template",
+      source: "internal",
+      requiredFonts: [],
+      customPackages: [],
+      previewImage: "/templates/test.png",
+      isDefault: false
     };
 
     it('should return custom placeholder when defined', () => {
@@ -89,9 +107,16 @@ describe('Template Configuration', () => {
 
     it('should return default placeholder when template has no placeholders', () => {
       const templateWithoutPlaceholders: TemplateMetadata = {
+        id: "test-template-no-placeholders",
         name: "Test Template",
         path: "templates/latex/test.tex",
-        latexContent: ""
+        latexContent: "",
+        description: "Test template without placeholders",
+        source: "internal",
+        requiredFonts: [],
+        customPackages: [],
+        previewImage: "/templates/test.png",
+        isDefault: false
       };
       
       const result = getImagePlaceholder(templateWithoutPlaceholders, "test.jpg");
@@ -102,6 +127,7 @@ describe('Template Configuration', () => {
   describe('validateTemplateRequirements()', () => {
     it('should validate fonts and packages when both are required', async () => {
       const template: TemplateMetadata = {
+        id: "test-template-fonts-packages",
         name: "Test Template",
         path: "templates/latex/test.tex",
         latexContent: `\\documentclass{article}
@@ -110,8 +136,12 @@ describe('Template Configuration', () => {
 \\usepackage{geometry}
 \\begin{document}
 \\end{document}`,
+        description: "Template with fonts and packages",
+        source: "internal",
         requiredFonts: ["FiraSans"],
-        customPackages: ["fontawesome"]
+        customPackages: ["fontawesome"],
+        previewImage: "/templates/test.png",
+        isDefault: false
       };
 
       mockExecFile
@@ -139,10 +169,16 @@ describe('Template Configuration', () => {
 
     it('should return errors when fonts are missing', async () => {
       const template: TemplateMetadata = {
+        id: "test-template-missing-font",
         name: "Test Template",
         path: "templates/latex/test.tex",
         latexContent: "",
-        requiredFonts: ["MissingFont"]
+        description: "Template with missing font",
+        source: "internal",
+        requiredFonts: ["MissingFont"],
+        customPackages: [],
+        previewImage: "/templates/test.png",
+        isDefault: false
       };
 
       mockExecFile.mockImplementationOnce((cmd, args, opts, callback) => {
@@ -160,10 +196,16 @@ describe('Template Configuration', () => {
 
     it('should return errors when packages are missing', async () => {
       const template: TemplateMetadata = {
+        id: "test-template-missing-package",
         name: "Test Template",
         path: "templates/latex/test.tex",
         latexContent: "",
-        customPackages: ["missing-package"]
+        description: "Template with missing package",
+        source: "internal",
+        requiredFonts: [],
+        customPackages: ["missing-package"],
+        previewImage: "/templates/test.png",
+        isDefault: false
       };
 
       const error = new Error('Command failed') as ExecFileException;

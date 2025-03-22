@@ -1,11 +1,48 @@
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import { StaticTemplatePreviewCarousel } from '@/components/StaticTemplatePreviewCarousel';
+import { TemplateMetadata } from '@/types/templates';
 
 // Mock templates with realistic data
-const mockTemplates = [
-  { id: 'modern-1', name: 'Modern Template' },
-  { id: 'professional-2', name: 'Professional Template' },
-  { id: 'creative-3', name: 'Creative Template' },
+const mockTemplates: TemplateMetadata[] = [
+  {
+    id: 'modern-1',
+    name: 'Modern Template',
+    path: 'templates/modern-1.tex',
+    latexContent: '\\documentclass{article}\\begin{document}Modern Template\\end{document}',
+    description: 'A modern and clean template',
+    source: 'internal',
+    imagePlaceholders: {},
+    requiredFonts: ['lato'],
+    customPackages: ['geometry'],
+    previewImage: 'templates/modern-1.png',
+    isDefault: true
+  },
+  {
+    id: 'professional-2',
+    name: 'Professional Template',
+    path: 'templates/professional-2.tex',
+    latexContent: '\\documentclass{article}\\begin{document}Professional Template\\end{document}',
+    description: 'A professional-looking template',
+    source: 'internal',
+    imagePlaceholders: {},
+    requiredFonts: ['times'],
+    customPackages: ['hyperref'],
+    previewImage: 'templates/professional-2.png',
+    isDefault: false
+  },
+  {
+    id: 'creative-3',
+    name: 'Creative Template',
+    path: 'templates/creative-3.tex',
+    latexContent: '\\documentclass{article}\\begin{document}Creative Template\\end{document}',
+    description: 'A creative and unique template',
+    source: 'internal',
+    imagePlaceholders: {},
+    requiredFonts: ['montserrat'],
+    customPackages: ['xcolor'],
+    previewImage: 'templates/creative-3.png',
+    isDefault: false
+  }
 ];
 
 // Mock next/image
@@ -36,7 +73,8 @@ describe('StaticTemplatePreviewCarousel', () => {
     expect(screen.getByText('Modern Template')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /previous template/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /next template/i })).toBeInTheDocument();
-    expect(screen.getByTestId('next-image')).toHaveAttribute('src', '/templates/modern-1.png');
+    expect(screen.getByTestId('next-image')).toHaveAttribute('src', 'templates/modern-1.png');
+    expect(screen.getByTestId('next-image')).toHaveAttribute('alt', 'Preview of Modern Template template');
   });
 
   it('handles empty templates array', () => {
@@ -127,7 +165,7 @@ describe('StaticTemplatePreviewCarousel', () => {
       fireEvent.error(image);
       
       expect(screen.queryByRole('status')).not.toBeInTheDocument();
-      expect(screen.getByText(/failed to load template preview/i)).toBeInTheDocument();
+      expect(screen.getByText(/preview image not available/i)).toBeInTheDocument();
     });
   });
 

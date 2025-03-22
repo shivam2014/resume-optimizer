@@ -22,6 +22,7 @@ export const getSampleContent = (): string => {
 export const getTemplates = (): TemplateMetadata[] => {
   return [
     {
+      id: "default-resume",
       name: "Default Resume",
       path: "templates/latex/Default_Resume.tex",
       latexContent: `\\documentclass[11pt,a4paper]{article}
@@ -60,6 +61,7 @@ export const getTemplates = (): TemplateMetadata[] => {
       isDefault: true
     },
     {
+      id: "john-miller-cv",
       name: "John Miller CV",
       path: "templates/latex/John_Miller_CV.tex",
       latexContent: `\\documentclass[11pt,a4paper]{article}
@@ -108,6 +110,7 @@ export const getTemplates = (): TemplateMetadata[] => {
       previewImage: "/templates/latex/John_Miller_CV.jpeg"
     },
     {
+      id: "modular-professional-cv",
       name: "Modular Professional CV",
       path: "templates/latex/Modular_Professional_CV.tex",
       latexContent: `\\documentclass[11pt,a4paper]{article}
